@@ -14,17 +14,70 @@ path operator""_p(const char* data, std::size_t sz) {
     return path(data, data + sz);
 }
 
-// напишите эту функцию
-bool Preprocess(const path& in_file, const path& out_file, const vector<path>& include_directories);
+bool Preprocess(const path& in_file, ofstream& dumFile, const vector<path>& include_directories)
+{
+    ifstream read_file(in_file);
+    if (!read_file) { return false; }
+
+    static regex num_reg(R"(\s*#\s*include\s*\"([^\"]*)\"\s*)");
+    static regex num_reg1(R"(\s*#\s*include\s*<([^>]*)>\s**)");
+    smatch m;
+    string y;
+    int line = 0;
+    while (getline(read_file,y))
+    {
+        ++line;
+        if (regex_match(y,m,num_reg) || regex_match(y,m,num_reg1) )
+        {
+            bool is_found = false;
+            path p = in_file.parent_path() / string(m[1]);
+            if (Preprocess(p,dumFile,include_directories))
+            {
+                is_found = true;
+            }
+            else
+            {
+                for (auto include_path: include_directories)
+                {
+                    if (Preprocess(path(include_path / string(m[1])),dumFile,include_directories))
+                    {
+                        is_found = true;
+                        break;
+                    }
+                }
+            }
+            if (is_found == false)
+            {
+                cout<<"unknown include file "<<p.filename().string()<<" at file "<<in_file.string()<<
+            " at line "<<line<<endl;
+                return false;
+            }
+        }
+        else dumFile<<y<<'\n';
+    }
+    return true;
+}
+
+bool Preprocess(const path& in_file, const path& out_file, const vector<path>& include_directories)
+{
+    ifstream read_file(in_file);
+    if (!read_file) { return false; }
+
+    ofstream out(out_file, ios::out | ios::app);
+    if (!out) { return false; }
+
+    return Preprocess(in_file,out,include_directories);
+}
+
+
 
 string GetFileContents(string file) {
     ifstream stream(file);
-
-    // конструируем string по двум итераторам
     return {(istreambuf_iterator<char>(stream)), istreambuf_iterator<char>()};
 }
 
 void Test() {
+
     error_code err;
     filesystem::remove_all("sources"_p, err);
     filesystem::create_directories("sources"_p / "include2"_p / "lib"_p, err);
@@ -89,6 +142,7 @@ void Test() {
                 "    cout << \"hello, world!\" << endl;\n"s;
 
     assert(GetFileContents("sources/a.in"s) == test_out.str());
+
 }
 
 int main() {
