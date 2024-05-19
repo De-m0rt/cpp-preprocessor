@@ -11,10 +11,10 @@ using namespace std;
 using filesystem::path;
 
 path operator""_p(const char* data, std::size_t sz) {
-    return path(data, data + sz);
+    return path(data, data + sz); //df
 }
 
-bool Preprocess(const path& in_file, ofstream& dumFile, const vector<path>& include_directories)
+bool Find_includes(const path& in_file, ofstream& dumFile, const vector<path>& include_directories)
 {
     ifstream read_file(in_file);
     if (!read_file) { return false; }
@@ -31,7 +31,7 @@ bool Preprocess(const path& in_file, ofstream& dumFile, const vector<path>& incl
         {
             bool is_found = false;
             path p = in_file.parent_path() / string(m[1]);
-            if (Preprocess(p,dumFile,include_directories))
+            if (Find_includes(p,dumFile,include_directories))
             {
                 is_found = true;
             }
@@ -39,7 +39,7 @@ bool Preprocess(const path& in_file, ofstream& dumFile, const vector<path>& incl
             {
                 for (auto include_path: include_directories)
                 {
-                    if (Preprocess(path(include_path / string(m[1])),dumFile,include_directories))
+                    if (Find_includes(path(include_path / string(m[1])),dumFile,include_directories))
                     {
                         is_found = true;
                         break;
@@ -66,7 +66,7 @@ bool Preprocess(const path& in_file, const path& out_file, const vector<path>& i
     ofstream out(out_file, ios::out | ios::app);
     if (!out) { return false; }
 
-    return Preprocess(in_file,out,include_directories);
+    return Find_includes(in_file,out,include_directories);
 }
 
 
